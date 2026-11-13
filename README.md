@@ -1,34 +1,67 @@
-# Meta Conversions Event Routing | n8n
+# Connecting Payment Events to Meta Ads: A Conversions API Workflow
 
-## The business problem
+**Meta Conversions API · n8n · Google Sheets · SHA-256 hashing · Event routing**
 
-A person may click an ad, submit a form and later complete a payment. If the final outcome lives in a separate spreadsheet, marketing attribution can become incomplete. This workflow prepares structured conversion events and routes them to Meta's Conversions API.
+## The challenge
 
-## How it fits Heart2Heart
+Someone discovers your programme through a Meta ad. They visit your landing page, submit their details, and complete payment later.
 
-Grace first built the Heart2Heart landing page, implemented Google tracking and Google Ads measurement, connected Meta conversion tracking, then built lead and payment automation. This repository isolates the Meta event-routing workflow so someone can study or reuse the measurement component. See the [Heart2Heart project](https://github.com/graceomolola001-cmyk/h2h-lead-intake-and-tracking).
+Your business tracker may record that final payment. But how does the advertising platform receive the eligible conversion event?
 
-## Data flow
+I built this workflow as part of Heart2Heart Enterprise's wider acquisition and payment-tracking system, connecting business-event data with server-side conversion measurement.
+
+## What I built
+
+A **seven-node n8n workflow** that checks payment-related records, prepares event information, hashes selected customer identifiers, and sends the event payload to Meta's Conversions API.
+
+| Step | What happens | Why it matters |
+| --- | --- | --- |
+| **Read** | A Google Sheets trigger receives an event | Connects the business tracker to the workflow |
+| **Filter** | Payment-related conditions determine whether the event should continue | Reduces unintended event sends |
+| **Prepare** | JavaScript builds the event payload | Produces a predictable request structure |
+| **Protect** | Crypto nodes hash designated identifiers | Supports Meta's customer-information requirements |
+| **Send** | HTTP Request passes the payload to the Meta Graph API | Submits the conversion event for processing |
+
+The goal is to report **independently verified, eligible events**, with appropriate consent and matching rules. A payment claim alone must not be treated as a confirmed purchase.
+
+## Workflow overview
 
 ```mermaid
 flowchart LR
- A[Google Sheets event] --> B[Check event eligibility]
- B --> C[Prepare CAPI payload]
- C --> D[Hash identifiers]
- D --> E[Meta HTTP endpoint]
- E --> F[Inspect response]
+    A[Google Sheets] --> B[Payment-event check]
+    B --> C[Prepare event payload]
+    C --> D[Hash identifiers]
+    D --> E[Meta CAPI request]
+    E --> F[Inspect API response]
 ```
 
-## Replicate
+## How it fits the bigger project
 
-1. Import the sanitized workflow from `workflows/` into n8n.
-2. Reconnect a fictional Google Sheet, configure your own Pixel / Dataset ID and Meta CAPI access token **privately**.
-3. Review event names, timestamps, event IDs, customer-information hashing, consent and deduplication expectations.
-4. Run an authorized Meta test event and inspect the HTTP response.
-5. Verify the pixel and server event use consistent IDs where deduplication is intended.
+I first developed Heart2Heart's landing page, then connected Google tracking and Google Ads measurement. I also implemented Meta conversion tracking and built an n8n lead and payment workflow.
 
-## Evidence boundaries
+This repository focuses on the **Meta event-routing component**. See the [Heart2Heart end-to-end case study](https://github.com/graceomolola001-cmyk/h2h-lead-intake-and-tracking) for the broader system.
 
-This repository demonstrates the event pipeline. It does not contain the landing-page source, the Google Ads account, GA4/GTM configuration, live Meta secrets, verified ad-platform attribution, or campaign performance results.
+## Explore the code
 
-Never send real personal data or production credentials in a public example.
+- **[Seven-node n8n export](workflows/18-meta-conversions.json)**
+- **[Workflow map](docs/WORKFLOW_MAP.md)**
+- **[Developer setup and tests](docs/REPLICATION_CHECKLIST.md)**
+- **[Audit and known limitations](docs/REVIEW_AND_TEST_RESULTS.md)**
+- **[JSON validation script](scripts/validate_workflows.py)**
+
+## Developer quick start
+
+1. Import the workflow into a **test** n8n instance; leave it inactive.
+2. Create a fictional Google Sheet and replace the spreadsheet placeholder.
+3. Configure your own authorized Meta dataset/pixel ID and access token **privately**.
+4. Check event names, timestamps, event IDs, customer-data normalization and SHA-256 hashing. Use the [reproduction checklist](docs/REPLICATION_CHECKLIST.md).
+5. Send a consented synthetic/test event through Meta's test tooling and inspect the response.
+6. Verify browser/server event ID matching if deduplication is intended. Test invalid inputs and failure paths before enabling live events.
+
+**Code review update:** The event builder now rejects missing lead IDs, invalid timestamps, and missing or invalid hashed identifiers. Those checks passed synthetic tests. The live Meta Graph API request, provider schema acceptance, event matching, and attribution accuracy remain **unverified**.
+
+## What this project demonstrates
+
+Server-side event preparation, API integration, identifier hashing, and marketing measurement automation, with attention to validation and data handling.
+
+The public export contains no live ad-account access or verified campaign-performance figures. Use it as a documented implementation example and test it against your own authorized environment.
