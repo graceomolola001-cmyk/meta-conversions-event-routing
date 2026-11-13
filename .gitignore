@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+credentials/
+private/
+exports/
+*.secret.json
+*.execution.json
+*.log
+node_modules/
