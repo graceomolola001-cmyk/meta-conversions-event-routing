@@ -1,0 +1,238 @@
+{
+  "name": "META CONVERSIONS",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "15D6SlfXaiXi1Zn3tUBLkcBXU_GuuvAgBlGQk13i9cqE",
+          "mode": "list",
+          "cachedResultName": "HEART2HEART ENTERPRISE MASTER SRM LEAD & PAYMENT VERIFICATION TRACKER",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_SPREADSHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "MASTER SRM LEAD TRACKER",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_SPREADSHEET_ID/edit#gid=0"
+        },
+        "event": "rowUpdate",
+        "includeInOutput": "both",
+        "options": {
+          "columnsToWatch": "={{ [\"Payment Verified?\"] }}",
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRange",
+              "headerRow": 8,
+              "firstDataRow": 9
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        32
+      ],
+      "id": "0792a7d9-b809-4d40-a6d0-165bdcd30e54",
+      "name": "Google Sheets Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5e434e4d-4a85-44ed-bb5c-694207ccaad0",
+              "leftValue": "={{ $json[\"Payment Verified?\"] }}",
+              "rightValue": "YES",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -256,
+        32
+      ],
+      "id": "b132a748-ea89-4276-97ff-7384a58ffbc6",
+      "name": "If payment occured",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const lead = $('If payment occured').all()[$itemIndex].json;\n\nreturn {\n  json: {\n    leadId: lead[\"Lead ID\"] || \"\",\n    fullName: lead[\"Full Name\"] || \"\",\n    email: lead[\"Email Address\"] || \"\",\n    phone: lead[\"WhatsApp / Phone\"] || \"\",\n    metaClickId: lead[\"Meta Click ID\"] || \"\",\n    paymentVerified: lead[\"Payment Verified?\"] || \"\",\n    eventTime: Math.floor(Date.now() / 1000)\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -16
+      ],
+      "id": "2de6baf1-bd66-4e24-b896-c18bc2b59ec1",
+      "name": "prepare capi data",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "value": "={{ $json.email.trim().toLowerCase() }}",
+        "dataPropertyName": "hashedEmail"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        192,
+        32
+      ],
+      "id": "6249eafd-cf21-41e9-ab7c-f023be403bdb",
+      "name": "Crypto"
+    },
+    {
+      "parameters": {
+        "value": "={{ String($json.phone).replace(/\\D/g, \"\") }}",
+        "dataPropertyName": "hashedPhone"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        400,
+        32
+      ],
+      "id": "b03a03cc-6a89-40ab-8332-c063dc4c7ecd",
+      "name": "Crypto1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const data = $json;\n\nconst userData = {\n  em: [data.hashedEmail],\n  ph: [data.hashedPhone]\n};\n\nif (data.metaClickId) {\n  userData.fbc = data.metaClickId;\n}\n\nreturn {\n  json: {\n    eventId: `${data.leadId}-SRM-PAYMENT-VERIFIED`,\n\n    data: [\n      {\n        event_name: \"SRM Payment Verified\",\n        event_time: data.eventTime,\n        event_id: `${data.leadId}-SRM-PAYMENT-VERIFIED`,\n        action_source: \"system_generated\",\n\n        custom_data: {\n          event_source: \"crm\",\n          lead_event_source: \"Heart2Heart SRM\"\n        },\n\n        user_data: userData\n      }\n    ]\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        32
+      ],
+      "id": "bdb6db43-a8b8-4cc7-97db-20f48adfea2f",
+      "name": "send CAPI event",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v26.0/REPLACE_WITH_META_PIXEL_ID/events",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        816,
+        32
+      ],
+      "id": "0314b090-ee83-4c85-90aa-2d4493bf7290",
+      "name": "HTTP Request",
+      "alwaysOutputData": true
+    }
+  ],
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "If payment occured",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If payment occured": {
+      "main": [
+        [
+          {
+            "node": "prepare capi data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "prepare capi data": {
+      "main": [
+        [
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "Crypto1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto1": {
+      "main": [
+        [
+          {
+            "node": "send CAPI event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send CAPI event": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
